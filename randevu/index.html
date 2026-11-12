@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bedber Erkek Kuaförü · Randevu</title>
+<meta name="theme-color" content="#111111">
+<style>
+:root{--bg:#111;--card:#1c1c1c;--line:#2c2c2c;--gold:#c9a24b;--txt:#f2f2f2;--mut:#9a9a9a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding-bottom:110px}
+header{padding:28px 18px 10px;text-align:center}
+.brand{font-size:13px;letter-spacing:3px;color:var(--gold);text-transform:uppercase}
+h1{margin:8px 0 4px;font-size:26px}
+.sub{color:var(--mut);font-size:14px}
+h2{font-size:15px;color:var(--mut);font-weight:600;margin:22px 18px 10px;text-transform:uppercase;letter-spacing:1px}
+.days{display:flex;gap:8px;overflow-x:auto;padding:0 18px 6px;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{flex:0 0 62px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 0;text-align:center;cursor:pointer;color:var(--txt)}
+.day b{display:block;font-size:20px;margin:2px 0}
+.day small{font-size:11px;color:var(--mut)}
+.day.on{background:var(--gold);border-color:var(--gold);color:#111}
+.day.on small{color:#111}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 18px}
+.slot{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 0;text-align:center;font-size:15px;cursor:pointer;color:var(--txt)}
+.slot.on{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700}
+.slot:disabled{opacity:.3;cursor:default}
+.empty{color:var(--mut);padding:0 18px;font-size:14px}
+.f{padding:0 18px}
+input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--txt);font-size:16px;margin-bottom:10px}
+input:focus{outline:none;border-color:var(--gold)}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#111 30%)}
+.go{width:100%;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:700;background:#25D366;color:#fff;cursor:pointer}
+.go:disabled{background:#2c2c2c;color:#777}
+.sum{text-align:center;font-size:13px;color:var(--mut);margin-bottom:8px;min-height:16px}
+.note{color:var(--mut);font-size:12px;text-align:center;padding:16px 24px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Bedber Erkek Kuaförü</div>
+  <h1>Randevu al</h1>
+  <div class="sub">Her gün 08:30 – 19:30</div>
+</header>
+
+<h2>Gün</h2>
+<div class="days" id="days"></div>
+
+<h2>Saat</h2>
+<div class="slots" id="slots"></div>
+<div class="empty" id="none" style="display:none">Bugün için uygun saat kalmadı, başka bir gün seçin.</div>
+
+<h2>Adınız</h2>
+<div class="f"><input id="name" placeholder="Ad Soyad" autocomplete="name"></div>
+
+<div class="note">Randevu isteğiniz WhatsApp'tan iletilir. Berberimiz onayladığında randevunuz kesinleşir.</div>
+
+<div class="bar">
+  <div class="sum" id="sum"></div>
+  <button class="go" id="go" disabled>WhatsApp ile Randevu İste</button>
+</div>
+
+<script>
+const PHONE='905453303231';
+const OPEN=8*60+30, CLOSE=19*60+30, STEP=30; // son randevu 19:00
+const DAYS=14;
+const gun=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+const kgun=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+const ay=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+let selDay=null, selTime=null;
+const pad=n=>String(n).padStart(2,'0');
+const fmt=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+
+function today(){const d=new Date();d.setHours(0,0,0,0);return d}
+function slotsFor(d){
+  const now=new Date(), out=[];
+  for(let m=OPEN;m+STEP<=CLOSE;m+=STEP){
+    const t=new Date(d);t.setMinutes(m);
+    out.push({m,past:t.getTime()<now.getTime()+30*60000});
+  }
+  return out;
+}
+function renderDays(){
+  const box=document.getElementById('days');box.innerHTML='';
+  const t0=today();
+  for(let i=0;i<DAYS;i++){
+    const d=new Date(t0);d.setDate(d.getDate()+i);
+    if(i===0 && slotsFor(d).every(s=>s.past)) continue;
+    if(!selDay) selDay=d;
+    const b=document.createElement('button');
+    b.className='day'+(selDay.getTime()===d.getTime()?' on':'');
+    b.innerHTML=`<small>${i===0?'Bugün':i===1?'Yarın':kgun[d.getDay()]}</small><b>${d.getDate()}</b><small>${ay[d.getMonth()].slice(0,3)}</small>`;
+    b.onclick=()=>{selDay=d;selTime=null;renderDays();renderSlots();update()};
+    box.appendChild(b);
+  }
+}
+function renderSlots(){
+  const box=document.getElementById('slots');box.innerHTML='';
+  const list=slotsFor(selDay);let any=false;
+  list.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='slot'+(selTime===s.m?' on':'');
+    b.textContent=fmt(s.m);b.disabled=s.past;if(!s.past)any=true;
+    b.onclick=()=>{selTime=s.m;renderSlots();update()};
+    box.appendChild(b);
+  });
+  document.getElementById('none').style.display=any?'none':'block';
+}
+function update(){
+  const n=document.getElementById('name').value.trim();
+  const ok=selDay&&selTime!==null&&n.length>1;
+  document.getElementById('go').disabled=!ok;
+  document.getElementById('sum').textContent=selDay&&selTime!==null?
+    `${selDay.getDate()} ${ay[selDay.getMonth()]} ${gun[selDay.getDay()]} · ${fmt(selTime)}`:'Gün ve saat seçin';
+}
+document.getElementById('name').addEventListener('input',update);
+document.getElementById('go').onclick=()=>{
+  const n=document.getElementById('name').value.trim();
+  const msg=`Merhaba, ${selDay.getDate()} ${ay[selDay.getMonth()]} ${gun[selDay.getDay()]} saat ${fmt(selTime)} için randevu almak istiyorum. Adım: ${n}`;
+  location.href='https://wa.me/'+PHONE+'?text='+encodeURIComponent(msg);
+};
+renderDays();renderSlots();update();
+</script>
+</body>
+</html>
